@@ -125,11 +125,11 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
           </a>
         </div>
 
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        {/* <div className="mt-4 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-500 text-center">
             Demo Credentials: admin / admin123
           </p>
-        </div>
+        </div> */}
       </motion.div>
     </div>
   );
