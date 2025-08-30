@@ -1,14 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import CelebrationPopup from './CelebrationPopup';
 
 const actors = [
-  'Shah Rukh Khan', 'Salman Khan', 'Aamir Khan', 'Akshay Kumar', 'Hrithik Roshan',
-  'Ranbir Kapoor', 'Ranveer Singh', 'Varun Dhawan', 'Tiger Shroff', 'Kartik Aaryan',
-  'Amitabh Bachchan', 'Ajay Devgn', 'John Abraham', 'Arjun Kapoor', 'Sidharth Malhotra'
+  'M. G. Ramachandran (MGR)',
+  'Sivaji Ganesan',
+  'Gemini Ganesan',
+  'Jaishankar',
+  'Rajinikanth',
+  'Kamal Haasan',
+  'Sathyaraj',
+  'Vijayakanth',
+  'Prabhu',
+  'Karthik',
+  'Murali',
+  'Sarathkumar',
+  'Arjun Sarja',
+  'Mohan',
+  'Raghuvaran'
 ];
 
 interface SpinWheelProps {
@@ -29,13 +41,93 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
   
   const wheelRef = useRef<HTMLDivElement>(null);
   const rotation = useMotionValue(0);
+  const dragHistory = useRef<{angle: number, time: number}[]>([]);
+  const animationControls = useRef<any>(null);
   
-  // Fix the useTransform error by providing matching array lengths
   const scale = useTransform(rotation, [0, 180, 360], [1, 1.05, 1]);
 
   useEffect(() => {
     fetchStaffDetails();
   }, [staffId]);
+
+  const playSpinSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Main spinning sound - whoosh effect
+      const oscillator1 = audioContext.createOscillator();
+      const gainNode1 = audioContext.createGain();
+      const filter1 = audioContext.createBiquadFilter();
+      
+      oscillator1.connect(filter1);
+      filter1.connect(gainNode1);
+      gainNode1.connect(audioContext.destination);
+      
+      oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
+      oscillator1.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 4.0);
+      oscillator1.type = 'sawtooth';
+      
+      filter1.type = 'lowpass';
+      filter1.frequency.setValueAtTime(800, audioContext.currentTime);
+      filter1.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 4.0);
+      
+      gainNode1.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode1.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.1);
+      gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 4.0);
+      
+      // Clicking sounds as wheel slows down
+      [2.5, 3.0, 3.3, 3.6, 3.8].forEach((time, i) => {
+        const clickOsc = audioContext.createOscillator();
+        const clickGain = audioContext.createGain();
+        
+        clickOsc.connect(clickGain);
+        clickGain.connect(audioContext.destination);
+        
+        clickOsc.frequency.setValueAtTime(800, audioContext.currentTime + time);
+        clickOsc.type = 'square';
+        
+        clickGain.gain.setValueAtTime(0, audioContext.currentTime + time);
+        clickGain.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + time + 0.01);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + time + 0.1);
+        
+        clickOsc.start(audioContext.currentTime + time);
+        clickOsc.stop(audioContext.currentTime + time + 0.1);
+      });
+      
+      oscillator1.start(audioContext.currentTime);
+      oscillator1.stop(audioContext.currentTime + 4.0);
+    } catch (error) {
+      console.log('Audio context not available');
+    }
+  };
+
+  const playSuccessSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Victory fanfare
+      const frequencies = [523.25, 659.25, 783.99]; // C, E, G major chord
+      frequencies.forEach((freq, i) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 1.0);
+      });
+    } catch (error) {
+      console.log('Audio context not available');
+    }
+  };
 
   const fetchStaffDetails = async () => {
     try {
@@ -49,74 +141,131 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
     }
   };
 
+  // Fixed function to determine the winning actor based on pointer position
+  const getWinningActor = (finalRotation: number): string => {
+    // Normalize rotation to 0-360 degrees
+    const normalizedRotation = ((finalRotation % 360) + 360) % 360;
+    
+    // Calculate segment size
+    const segmentSize = 360 / actors.length;
+    
+    // The pointer points to the top (0 degrees), so we need to find which segment
+    // is at the top after rotation. Since the wheel rotates clockwise, we need to
+    // account for the direction.
+    const pointerAngle = (360 - normalizedRotation) % 360;
+    
+    // Find which segment the pointer is in
+    const segmentIndex = Math.floor(pointerAngle / segmentSize);
+    
+    // Make sure the index is within bounds
+    const winningIndex = segmentIndex % actors.length;
+    
+    return actors[winningIndex];
+  };
+
+  const calculateDragVelocity = () => {
+    const now = Date.now();
+    // Keep only recent drag history (last 100ms)
+    dragHistory.current = dragHistory.current.filter(entry => now - entry.time < 100);
+    
+    if (dragHistory.current.length < 2) return 0;
+    
+    const oldest = dragHistory.current[0];
+    const newest = dragHistory.current[dragHistory.current.length - 1];
+    const timeDiff = newest.time - oldest.time;
+    const angleDiff = newest.angle - oldest.angle;
+    
+    return timeDiff > 0 ? angleDiff / timeDiff : 0;
+  };
+
   const handleSpin = async () => {
     if (isSpinning || !staff) return;
+
+    // Stop any existing animation
+    if (animationControls.current) {
+      animationControls.current.stop();
+    }
 
     setIsSpinning(true);
     setResult(null);
     setShowCelebration(false);
 
-    // Random spin calculation
-    const randomSpins = Math.floor(Math.random() * 5) + 5; // 5-10 full rotations
-    const randomDegree = Math.floor(Math.random() * 360);
-    const totalRotation = randomSpins * 360 + randomDegree;
+    // Play spinning sound
+    playSpinSound();
+
+    // Generate random spin parameters
+    const baseSpins = Math.floor(Math.random() * 4) + 4; // 4-7 full rotations
+    const randomAngle = Math.random() * 360; // Random final position
     
-    rotation.set(rotation.get() + totalRotation);
-
-    // Calculate which actor was selected
-    const segmentSize = 360 / actors.length;
-    const normalizedDegree = (totalRotation % 360);
-    const selectedIndex = Math.floor(normalizedDegree / segmentSize);
-    const selectedActor = actors[selectedIndex];
-
-    // Wait for spin animation to complete
-    setTimeout(async () => {
-      setIsSpinning(false);
-      setResult(selectedActor);
-      
-      // Generate AI quote
-      try {
-        const favoriteThings = [staff.favorite_thing_1, staff.favorite_thing_2, staff.favorite_thing_3];
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    // Calculate total rotation
+    const currentRotation = rotation.get();
+    const totalRotation = baseSpins * 360 + randomAngle;
+    const finalRotation = currentRotation + totalRotation;
+    
+    // Pre-calculate the winning actor based on final position
+    const winningActor = getWinningActor(finalRotation);
+    
+    // Animate the wheel to the final position
+    animationControls.current = animate(rotation, finalRotation, {
+      type: "tween",
+      ease: [0.25, 0.1, 0.25, 1],
+      duration: 4.0, // Reduced from 5.0 for faster animation
+      onComplete: async () => {
+        setIsSpinning(false);
+        setResult(winningActor);
         
-        const response = await fetch(`${backendUrl}/api/generate-quote`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            staffName: staff.name,
-            department: staff.department,
-            favoriteThings,
-            actorName: selectedActor,
-          }),
-        });
-
-        const data = await response.json();
-        setAiQuote(data.quote);
-
-        // Save result to database
-        await fetch(`${backendUrl}/api/spin/result`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            staffId: staff.id,
-            actorName: selectedActor,
-            aiQuote: data.quote,
-          }),
-        });
-
-        // Show celebration
+        // Play success sound immediately
+        playSuccessSound();
+        
+        // Trigger confetti immediately
         triggerConfetti();
-        setShowCelebration(true);
-      } catch (error) {
-        console.error('Error generating quote:', error);
-        setAiQuote(`Congratulations ${staff.name}! ${selectedActor} is celebrating with you today! 🎉`);
-        setShowCelebration(true);
+        
+        // Generate AI quote and show celebration faster
+        try {
+          const favoriteThings = [staff.favorite_thing_1, staff.favorite_thing_2, staff.favorite_thing_3];
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+          
+          // Start quote generation in background
+          const quotePromise = fetch(`${backendUrl}/api/generate-quote`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              staffName: staff.name,
+              department: staff.department,
+              favoriteThings,
+              actorName: winningActor,
+            }),
+          }).then(response => response.json());
+
+          // Show celebration popup quickly with a default message
+          setAiQuote(`🎉 Congratulations ${staff.name}! You got ${winningActor}! 🎉`);
+          setShowCelebration(true);
+          
+          // Update with AI quote when ready
+          const data = await quotePromise;
+          setAiQuote(data.quote);
+
+          // Save result to database
+          await fetch(`${backendUrl}/api/spin/result`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              staffId: staff.id,
+              actorName: winningActor,
+              aiQuote: data.quote,
+            }),
+          });
+          
+        } catch (error) {
+          console.error('Error generating quote:', error);
+          setAiQuote(`🎉 Congratulations ${staff.name}! ${winningActor} is celebrating with you today! 🎉`);
+        }
       }
-    }, 3000);
+    });
   };
 
   const triggerConfetti = () => {
@@ -133,7 +282,7 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
         spread: 55,
         origin: { x: 0 }
       });
-    }, 200);
+    }, 150);
     
     setTimeout(() => {
       confetti({
@@ -142,7 +291,7 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
         spread: 55,
         origin: { x: 1 }
       });
-    }, 400);
+    }, 300);
   };
 
   const handleCelebrationClose = () => {
@@ -150,7 +299,7 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
     if (isHallMode && onComplete) {
       setTimeout(() => {
         onComplete();
-      }, 500);
+      }, 300); // Reduced delay
     }
   };
 
@@ -188,9 +337,14 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
         {/* Wheel Container */}
         <div className="flex flex-col items-center">
           <div className="relative mb-8">
-            {/* Pointer */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 z-10">
-              <div className="w-0 h-0 border-l-4 border-r-4 border-b-8 border-l-transparent border-r-transparent border-b-yellow-400"></div>
+            {/* Pointer - Fixed at top center */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 z-20">
+              <div 
+                className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[25px] border-l-transparent border-r-transparent border-b-yellow-400 drop-shadow-lg"
+                style={{
+                  filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))'
+                }}
+              ></div>
             </div>
 
             {/* Wheel */}
@@ -200,23 +354,38 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
                 rotate: rotation,
                 scale: scale
               }}
-              transition={{
-                type: "spring",
-                damping: 0.7,
-                stiffness: 0.1,
-                duration: 3
-              }}
-              className="w-96 h-96 rounded-full relative cursor-grab active:cursor-grabbing shadow-2xl"
+              className="w-[400px] h-[400px] rounded-full relative overflow-hidden shadow-2xl cursor-pointer select-none border-4 border-yellow-400"
               drag={!isSpinning}
+              dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+              dragElastic={0}
               onDrag={(event, info) => {
                 if (!isSpinning) {
-                  rotation.set(rotation.get() + info.delta.x * 2);
+                  const now = Date.now();
+                  const deltaRotation = info.delta.x * 1;
+                  rotation.set(rotation.get() + deltaRotation);
+                  
+                  // Track drag history for velocity calculation
+                  dragHistory.current.push({
+                    angle: rotation.get(),
+                    time: now
+                  });
+                  
+                  // Keep only recent history
+                  if (dragHistory.current.length > 10) {
+                    dragHistory.current = dragHistory.current.slice(-5);
+                  }
                 }
               }}
               onDragEnd={(event, info) => {
-                if (!isSpinning && Math.abs(info.velocity.x) > 100) {
-                  handleSpin();
+                if (!isSpinning) {
+                  // Check if drag was fast enough to trigger auto-spin
+                  const velocity = Math.abs(info.velocity.x);
+                  if (velocity > 50) {
+                    handleSpin();
+                  }
                 }
+                // Clear drag history
+                dragHistory.current = [];
               }}
             >
               {actors.map((actor, index) => {
@@ -233,21 +402,40 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
                     }}
                   >
                     <div
-                      className="w-full h-full flex items-start justify-center pt-4"
+                      className="w-full h-full relative overflow-hidden"
                       style={{
                         background: `linear-gradient(135deg, hsl(${hue}, 70%, 60%), hsl(${hue}, 70%, 45%))`,
                         clipPath: 'inherit'
                       }}
                     >
-                      <span 
-                        className="text-white font-bold text-xs text-center px-2 leading-tight drop-shadow-sm"
-                        style={{ 
-                          transform: `rotate(${180/actors.length}deg)`,
-                          maxWidth: '80px'
+                      <div
+                        className="absolute text-white font-bold text-xs flex items-center justify-center"
+                        style={{
+                          left: '50%',
+                          top: '8px',
+                          transform: `translateX(-50%) rotate(${(360/actors.length)/2}deg)`,
+                          transformOrigin: '50% 180px',
+                          width: '140px',
+                          height: '30px',
+                          textAlign: 'center',
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                          lineHeight: '1.1',
+                          fontSize: '9px',
+                          fontWeight: '600',
+                          padding: '2px 4px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
                         }}
                       >
-                        {actor}
-                      </span>
+                        <span style={{ 
+                          display: 'block',
+                          transform: 'scale(0.9)',
+                          maxWidth: '100%'
+                        }}>
+                          {actor}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -258,10 +446,10 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
           {/* Instructions */}
           <div className="text-center text-white mb-8">
             <p className="text-lg font-semibold mb-2">
-              {isSpinning ? 'Spinning...' : 'Drag the wheel to spin!'}
+              {isSpinning ? 'Spinning...' : 'Drag the wheel or click spin!'}
             </p>
             <p className="text-purple-200">
-              {isSpinning ? 'Finding your lucky actor...' : 'Drag left or right with your mouse or finger'}
+              {isSpinning ? 'Finding your lucky actor...' : 'Drag the wheel in any direction or use the button below'}
             </p>
           </div>
 

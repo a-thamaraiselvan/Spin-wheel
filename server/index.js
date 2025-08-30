@@ -191,22 +191,40 @@ app.post('/api/generate-quote', async (req, res) => {
   try {
     const { staffName, department, favoriteThings, actorName } = req.body;
     
-    const prompt = `Generate a short, fun, celebratory thank-you quote for a professor. Use this format:
+//     const prompt = `Generate a short, fun, celebratory thank-you quote for a professor. Use this format:
 
-Staff Name: ${staffName}
-Department: ${department}
-Favorite Things: ${favoriteThings.join(', ')}
-Actor: ${actorName}
+// Staff Name: ${staffName}
+// Department: ${department}
+// Favorite Things: ${favoriteThings.join(', ')}
+// Actor: ${actorName}
 
-Create a 2-3 line quote that:
-- Starts with "Dear Professor ${staffName},"
-- Mentions one of their favorite things
-- Connects it to the actor name in a fun way
-- Ends with appreciation for their department work
-- Use appropriate emojis
-- Keep it motivational and joyful
+// Create a 2-3 line quote that:
+// - Starts with "Dear Professor ${staffName},"
+// - Mentions one of their favorite things
+// - Connects it to the actor name in a fun way
+// - Ends with appreciation for their department work
+// - Use appropriate emojis
+// - Keep it motivational and joyful
 
-Example style: "Dear Professor Sarah, Since you love Coffee ☕, today Shah Rukh Khan is raising a toast to you! Thank you for energizing the Computer Science department! 🎉"`;
+// Example style: "Dear Professor Sarah, Since you love Coffee ☕, today Shah Rukh Khan is raising a toast to you! Thank you for energizing the Computer Science department! 🎉"`;
+
+const prompt = `Generate a heartfelt, blessing-style Teacher’s Day quote in one or two lines.
+
+Format:
+- Start with "Dear, ${staffName}"
+- Mention one of their favorite things: ${favoriteThings.join(', ')}
+- Connect it with ${actorName} in a joyful and inspiring way
+- Use blessing/aim/destination style: wish them joy, guidance, light, inspiration
+- Appreciate their contribution to the ${department} department
+- End with "Happy Teacher’s Day 🎉"
+- Add positive emojis like 🌟🙏✨🌸🎉
+
+Example style:
+"Dear, Meena 🌸 Since you love Coffee ☕, Rajinikanth says your energy blesses every student’s journey towards success 🌟🙏 Thank you for guiding the Computer Science department. Happy Teacher’s Day 🎉"
+
+"Dear, Arjun ✨ Since you love Gardening 🌱, Sridevi says you nurture every student’s path with blessings and wisdom, helping them bloom towards their dreams 🌸🙏 Thank you for inspiring the Mathematics department. Happy Teacher’s Day 🎉"`;
+
+
 
     const apiKey = process.env.GEMINI_API_KEY;
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
