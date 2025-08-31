@@ -6,20 +6,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const allowedOrigins = ["https://spinwheel.novacodex.in","http://localhost:5173"];
+const PORT = process.env.PORT;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: FRONTEND_URL,
   credentials: true
 }));
+app.use(express.json());
 
 app.use(express.json());
 
@@ -267,5 +261,7 @@ Example style:
 initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+        console.log(`Frontend URL: ${process.env.VITE_FRONTEND_URL}`);
+    console.log(`Backend URL: ${process.env.VITE_BACKEND_URL}`);
   });
 });
