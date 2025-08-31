@@ -9,7 +9,13 @@ import {
   Gamepad2,
   BarChart3,
   Settings,
-  LogOut
+  LogOut,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,14 +39,33 @@ interface Analytics {
 
 const AdminDashboard = () => {
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
+  const [paginatedStaff, setPaginatedStaff] = useState<Staff[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAnalytics();
     fetchStaff();
   }, []);
+
+  useEffect(() => {
+    filterStaff();
+  }, [staff, searchTerm, departmentFilter, statusFilter]);
+
+  useEffect(() => {
+    paginateStaff();
+  }, [filteredStaff, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [searchTerm, departmentFilter, statusFilter]);
 
   const fetchAnalytics = async () => {
     try {
@@ -64,6 +89,46 @@ const AdminDashboard = () => {
     }
   };
 
+  const filterStaff = () => {
+    let filtered = staff;
+
+    // Filter by search term (name or favorite things)
+    if (searchTerm) {
+      filtered = filtered.filter(member =>
+        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.favorite_thing_1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.favorite_thing_2.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.favorite_thing_3.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by department
+    if (departmentFilter) {
+      filtered = filtered.filter(member =>
+        member.department.toLowerCase().includes(departmentFilter.toLowerCase())
+      );
+    }
+
+    // Filter by status
+    if (statusFilter) {
+      filtered = filtered.filter(member => member.status === statusFilter);
+    }
+
+    setFilteredStaff(filtered);
+  };
+
+  const paginateStaff = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedStaff(filteredStaff.slice(startIndex, endIndex));
+  };
+
+  const totalPages = Math.ceil(filteredStaff.length / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   const handleSpin = (staffId: number) => {
     navigate(`/admin/spin/${staffId}`);
   };
@@ -73,6 +138,15 @@ const AdminDashboard = () => {
     window.location.href = '/admin';
   };
 
+  const clearFilters = () => {
+    setSearchTerm('');
+    setDepartmentFilter('');
+    setStatusFilter('');
+  };
+
+  // Get unique departments for filter dropdown
+  const uniqueDepartments = [...new Set(staff.map(member => member.department))];
+
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'staff', label: 'Staff', icon: Users },
@@ -80,13 +154,118 @@ const AdminDashboard = () => {
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
+  // Pagination component
+  const Pagination = () => {
+    const getPageNumbers = () => {
+      const delta = 2;
+      const range = [];
+      const rangeWithDots = [];
+
+      for (
+        let i = Math.max(2, currentPage - delta);
+        i <= Math.min(totalPages - 1, currentPage + delta);
+        i++
+      ) {
+        range.push(i);
+      }
+
+      if (currentPage - delta > 2) {
+        rangeWithDots.push(1, '...');
+      } else {
+        rangeWithDots.push(1);
+      }
+
+      rangeWithDots.push(...range);
+
+      if (currentPage + delta < totalPages - 1) {
+        rangeWithDots.push('...', totalPages);
+      } else {
+        rangeWithDots.push(totalPages);
+      }
+
+      return rangeWithDots;
+    };
+
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-200">
+        <div className="flex items-center text-sm text-gray-700">
+          <span>
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+            {Math.min(currentPage * itemsPerPage, filteredStaff.length)} of{' '}
+            {filteredStaff.length} results
+          </span>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          {/* First Page */}
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronsLeft className="w-4 h-4" />
+          </button>
+          
+          {/* Previous Page */}
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {/* Page Numbers */}
+          <div className="flex items-center space-x-1">
+            {getPageNumbers().map((pageNumber, index) => (
+              <button
+                key={index}
+                onClick={() => typeof pageNumber === 'number' && handlePageChange(pageNumber)}
+                disabled={pageNumber === '...'}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pageNumber === currentPage
+                    ? 'bg-purple-600 text-white'
+                    : pageNumber === '...'
+                    ? 'text-gray-400 cursor-default'
+                    : 'text-gray-700 hover:bg-gray-100 border border-gray-300'
+                }`}
+              >
+                {pageNumber}
+              </button>
+            ))}
+          </div>
+
+          {/* Next Page */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          
+          {/* Last Page */}
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronsRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <motion.div
         initial={{ x: -300 }}
         animate={{ x: 0 }}
-        className="w-64 bg-white shadow-lg"
+        className="w-64 bg-white shadow-lg relative"
       >
         <div className="p-6 border-b">
           <h1 className="text-xl font-bold text-gray-800 flex items-center">
@@ -242,97 +421,229 @@ const AdminDashboard = () => {
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b">
-                  <h3 className="text-xl font-semibold text-gray-800">Registered Staff</h3>
+              {/* Search and Filter Section */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex flex-col lg:flex-row gap-4 items-center">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search by name or favorite things..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* Department Filter */}
+                  <div className="relative">
+                    <select
+                      value={departmentFilter}
+                      onChange={(e) => setDepartmentFilter(e.target.value)}
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all min-w-[150px]"
+                    >
+                      <option value="">All Departments</option>
+                      {uniqueDepartments.map((dept) => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                    <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all min-w-[120px]"
+                    >
+                      <option value="">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                    <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                  </div>
+
+                  {/* Clear Filters Button */}
+                  {(searchTerm || departmentFilter || statusFilter) && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={clearFilters}
+                      className="px-4 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    >
+                      Clear Filters
+                    </motion.button>
+                  )}
+                </div>
+
+                {/* Filter Results Summary */}
+                <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+                  <p>
+                    Showing {filteredStaff.length} of {staff.length} staff members
+                    {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
+                  </p>
+                  {(searchTerm || departmentFilter || statusFilter) && (
+                    <div className="flex items-center space-x-2">
+                      {searchTerm && (
+                        <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-medium">
+                          Search: "{searchTerm}"
+                        </span>
+                      )}
+                      {departmentFilter && (
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+                          Dept: {departmentFilter}
+                        </span>
+                      )}
+                      {statusFilter && (
+                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+                          Status: {statusFilter}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Enhanced Staff Table */}
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
+                  <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                    <Users className="w-6 h-6 mr-2 text-purple-600" />
+                    Registered Staff
+                  </h3>
                 </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Staff Details
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Favorite Things
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Status & Activity
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {staff.map((member) => (
-                        <tr key={member.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className="font-semibold text-gray-800">{member.name}</p>
-                              <p className="text-sm text-gray-600">{member.department}</p>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {paginatedStaff.map((member, index) => (
+                        <motion.tr 
+                          key={member.id} 
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="hover:bg-gradient-to-r hover:from-purple-25 hover:to-blue-25 transition-all duration-200"
+                        >
+                          <td className="px-6 py-5">
+                            <div className="flex items-center">
+                              <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-semibold mr-4">
+                                {member.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 text-lg">{member.name}</p>
+                                <p className="text-sm text-gray-600 font-medium">{member.department}</p>
+                              </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-1">
+                          <td className="px-6 py-5">
+                            <div className="flex flex-wrap gap-2">
                               {[member.favorite_thing_1, member.favorite_thing_2, member.favorite_thing_3].map((thing, index) => (
                                 <span
                                   key={index}
-                                  className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full"
+                                  className="inline-block bg-gradient-to-r from-purple-100 to-blue-100 text-purple-800 text-xs px-3 py-1 rounded-full font-medium border border-purple-200"
                                 >
                                   {thing}
                                 </span>
                               ))}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                member.status === 'completed'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-orange-100 text-orange-800'
-                              }`}
-                            >
-                              {member.status === 'completed' ? 'Completed' : 'Pending'}
-                            </span>
-                            {member.spin_count > 0 && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                {member.spin_count} spin{member.spin_count > 1 ? 's' : ''}
-                              </p>
-                            )}
+                          <td className="px-6 py-5">
+                            <div className="flex flex-col space-y-2">
+                              <span
+                                className={`inline-flex w-fit px-3 py-1 text-xs font-semibold rounded-full ${
+                                  member.status === 'completed'
+                                    ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
+                                    : 'bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-800 border border-orange-200'
+                                }`}
+                              >
+                                {member.status === 'completed' ? '✓ Completed' : '⏳ Pending'}
+                              </span>
+                              {member.spin_count > 0 && (
+                                <div className="flex items-center text-xs text-gray-500">
+                                  <RotateCw className="w-3 h-3 mr-1" />
+                                  {member.spin_count} spin{member.spin_count > 1 ? 's' : ''}
+                                </div>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="flex space-x-2">
+                          <td className="px-6 py-5">
+                            <div className="flex space-x-3">
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleSpin(member.id)}
-                                className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center"
+                                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-sm flex items-center"
                               >
-                                <RotateCw className="w-4 h-4 mr-1" />
+                                <RotateCw className="w-4 h-4 mr-2" />
                                 Spin
                               </motion.button>
                               {member.spin_count > 0 && (
-                                <button className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center">
-                                  <Eye className="w-4 h-4 mr-1" />
+                                <motion.button 
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm flex items-center border border-gray-300"
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
                                   History
-                                </button>
+                                </motion.button>
                               )}
                             </div>
                           </td>
-                        </tr>
+                        </motion.tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
+                {/* Pagination */}
+                <Pagination />
+
+                {filteredStaff.length === 0 && staff.length > 0 && (
+                  <div className="p-16 text-center">
+                    <div className="w-20 h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h4 className="text-xl font-semibold text-gray-700 mb-2">No staff found</h4>
+                    <p className="text-gray-500 mb-4">
+                      No staff members match your current search and filter criteria
+                    </p>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={clearFilters}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all font-medium"
+                    >
+                      Clear All Filters
+                    </motion.button>
+                  </div>
+                )}
+
                 {staff.length === 0 && (
-                  <div className="p-12 text-center">
-                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No staff registered yet</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Staff members can register at the main page
+                  <div className="p-16 text-center">
+                    <div className="w-20 h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h4 className="text-xl font-semibold text-gray-700 mb-2">No staff registered yet</h4>
+                    <p className="text-gray-500">
+                      Staff members can register at the main page to get started
                     </p>
                   </div>
                 )}

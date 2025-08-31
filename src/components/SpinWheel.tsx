@@ -93,56 +93,54 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
     fetchStaffDetails();
   }, [staffId]);
 
-  const playSpinSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Main spinning sound - whoosh effect
-      const oscillator1 = audioContext.createOscillator();
-      const gainNode1 = audioContext.createGain();
-      const filter1 = audioContext.createBiquadFilter();
-      
-      oscillator1.connect(filter1);
-      filter1.connect(gainNode1);
-      gainNode1.connect(audioContext.destination);
-      
-      oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
-      oscillator1.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 4.0);
-      oscillator1.type = 'sawtooth';
-      
-      filter1.type = 'lowpass';
-      filter1.frequency.setValueAtTime(800, audioContext.currentTime);
-      filter1.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 4.0);
-      
-      gainNode1.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode1.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.1);
-      gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 4.0);
-      
-      // Clicking sounds as wheel slows down
-      [2.5, 3.0, 3.3, 3.6, 3.8].forEach((time, i) => {
-        const clickOsc = audioContext.createOscillator();
-        const clickGain = audioContext.createGain();
-        
-        clickOsc.connect(clickGain);
-        clickGain.connect(audioContext.destination);
-        
-        clickOsc.frequency.setValueAtTime(800, audioContext.currentTime + time);
-        clickOsc.type = 'square';
-        
-        clickGain.gain.setValueAtTime(0, audioContext.currentTime + time);
-        clickGain.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + time + 0.01);
-        clickGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + time + 0.1);
-        
-        clickOsc.start(audioContext.currentTime + time);
-        clickOsc.stop(audioContext.currentTime + time + 0.1);
-      });
-      
-      oscillator1.start(audioContext.currentTime);
-      oscillator1.stop(audioContext.currentTime + 4.0);
-    } catch (error) {
-      console.log('Audio context not available');
-    }
-  };
+const playSpinSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    // Wind-like spinning sound
+    const oscillator1 = audioContext.createOscillator();
+    const oscillator2 = audioContext.createOscillator();
+    const gainNode1 = audioContext.createGain();
+    const gainNode2 = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    
+    oscillator1.connect(gainNode1);
+    oscillator2.connect(gainNode2);
+    gainNode1.connect(filter);
+    gainNode2.connect(filter);
+    filter.connect(audioContext.destination);
+    
+    // Two oscillators for richer sound
+    oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
+    oscillator1.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 3.0);
+    oscillator1.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 8.0);
+    oscillator1.type = 'sawtooth';
+    
+    oscillator2.frequency.setValueAtTime(300, audioContext.currentTime);
+    oscillator2.frequency.exponentialRampToValueAtTime(900, audioContext.currentTime + 3.0);
+    oscillator2.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 8.0);
+    oscillator2.type = 'triangle';
+    
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1200, audioContext.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 8.0);
+    
+    gainNode1.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode1.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.1);
+    gainNode1.gain.exponentialRampToValueAtTime(0.02, audioContext.currentTime + 8.0);
+    
+    gainNode2.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode2.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.2);
+    gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 8.0);
+    
+    oscillator1.start(audioContext.currentTime);
+    oscillator2.start(audioContext.currentTime);
+    oscillator1.stop(audioContext.currentTime + 8.0);
+    oscillator2.stop(audioContext.currentTime + 8.0);
+  } catch (error) {
+    console.log('Audio context not available');
+  }
+};
 
   const playSuccessSound = () => {
     try {
