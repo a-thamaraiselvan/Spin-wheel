@@ -7,12 +7,20 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const allowedOrigins = ["https://spinwheel.novacodex.in","http://localhost:5173"];
 
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json());
 
 // MySQL connection
