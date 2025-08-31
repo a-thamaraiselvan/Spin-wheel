@@ -4,24 +4,67 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import CelebrationPopup from './CelebrationPopup';
+import MGR from '../assets/M G R.jpg';
+import GeminiGanesan from '../assets/Gemini Ganesan.png';
+import jaishankar from '../assets/jaishankar.png';
+import sivajiganesan from '../assets/sivaji ganesan.jpg';
+import Jayalalithaa from '../assets/J. Jayalalithaa.jpg';
+import Lalitha from '../assets/Lalitha-c.jpg';
+import SarojaDevi from '../assets/B. Saroja Devi.jpg';
+import Vijaya from '../assets/KR_Vijaya.jpg';
+import Nambiar from '../assets/M. N. Nambiar.jpeg';
+import MahanatiSavitri from '../assets/mahanati-savitri.jpg';
+import SA from '../assets/S. A..jpeg';
+import SSR from '../assets/SSR.png';
+import Sivakumar from '../assets/Sivakumar.png';
+import RSManohar from '../assets/R. S. Manohar.jpeg';
+import PadminiRamachandran from '../assets/Padmini_Ramachandran.jpg';
+import Ragini from '../assets/Ragini-closeup-2.jpg';
+import TRMahali from '../assets/T. R. Mahali..jpeg';
+import muthuraman from '../assets/muthuraman.jpg'
 
 const actors = [
-  'M. G. Ramachandran (MGR)',
-  'Sivaji Ganesan',
-  'Gemini Ganesan',
-  'Jaishankar',
-  'Rajinikanth',
-  'Kamal Haasan',
-  'Sathyaraj',
-  'Vijayakanth',
-  'Prabhu',
-  'Karthik',
-  'Murali',
-  'Sarathkumar',
-  'Arjun Sarja',
-  'Mohan',
-  'Raghuvaran'
+  "J.Jayalalithaa",
+  "Lalitha C",
+  "B. Saroja Devi",
+  "Gemini Ganesan",
+  "Jaishankar",
+  "KR.Vijaya",
+  "M G R",
+  "M.N.Nambiar",
+  "Mahanati Savitri",
+  "muthuraman",
+  "Padmini Ramachandran",
+  "R.S.Manohar",
+  "Ragini",
+  "S.A",
+  "Sivaji ganesan",
+  "Sivakumar",
+  "SSR",
+  "T.R.Mahali"
 ];
+
+// Actor image mapping (put images in public/actors/ with these filenames)
+const actorImages: Record<string, string> = {
+  'M G R': MGR,
+  'B. Saroja Devi' : SarojaDevi,
+  'Gemini Ganesan': GeminiGanesan,
+  'Jaishankar': jaishankar,
+  'Sivaji Ganesan': sivajiganesan,
+  'J.Jayalalithaa': Jayalalithaa,
+  'Lalitha C': Lalitha,
+  'KR.Vijaya': Vijaya,
+  'M.N.Nambiar': Nambiar,
+  'Mahanati Savitri': MahanatiSavitri,
+  'S.A': SA,
+  'T.R.Mahali': TRMahali,
+  'SSR': SSR,
+  'Sivakumar': Sivakumar,
+  'R.S.Manohar': RSManohar,
+  'Padmini Ramachandran' : PadminiRamachandran,
+  'Ragini':Ragini,
+  'muthuraman' : muthuraman
+};
 
 interface SpinWheelProps {
   staffId?: string;
@@ -209,24 +252,26 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
     animationControls.current = animate(rotation, finalRotation, {
       type: "tween",
       ease: [0.25, 0.1, 0.25, 1],
-      duration: 4.0, // Reduced from 5.0 for faster animation
+      duration: 8.0, // Reduced from 5.0 for faster animation
       onComplete: async () => {
         setIsSpinning(false);
         setResult(winningActor);
-        
+
         // Play success sound immediately
         playSuccessSound();
-        
+
         // Trigger confetti immediately
         triggerConfetti();
-        
-        // Generate AI quote and show celebration faster
+
+        // Show popup instantly with a default congratulatory message
+        setAiQuote(`🎉 Congratulations ${staff.name}! ${winningActor} is celebrating with you today! 🎉`);
+        setShowCelebration(true);
+
+        // Generate AI quote in background
         try {
           const favoriteThings = [staff.favorite_thing_1, staff.favorite_thing_2, staff.favorite_thing_3];
           const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-          
-          // Start quote generation in background
-          const quotePromise = fetch(`${backendUrl}/api/generate-quote`, {
+          const response = await fetch(`${backendUrl}/api/generate-quote`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -237,14 +282,8 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
               favoriteThings,
               actorName: winningActor,
             }),
-          }).then(response => response.json());
-
-          // Show celebration popup quickly with a default message
-          setAiQuote(`🎉 Congratulations ${staff.name}! You got ${winningActor}! 🎉`);
-          setShowCelebration(true);
-          
-          // Update with AI quote when ready
-          const data = await quotePromise;
+          });
+          const data = await response.json();
           setAiQuote(data.quote);
 
           // Save result to database
@@ -259,10 +298,9 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
               aiQuote: data.quote,
             }),
           });
-          
         } catch (error) {
           console.error('Error generating quote:', error);
-          setAiQuote(`🎉 Congratulations ${staff.name}! ${winningActor} is celebrating with you today! 🎉`);
+          // Already showing default message, no need to update again
         }
       }
     });
@@ -340,9 +378,10 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
             {/* Pointer - Fixed at top center */}
             <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 z-20">
               <div 
-                className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[25px] border-l-transparent border-r-transparent border-b-yellow-400 drop-shadow-lg"
+                className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[25px] border-l-transparent border-r-transparent border-b-red-500 drop-shadow-lg"
                 style={{
-                  filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))'
+                  filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))',
+                  transform: 'rotate(180deg)'
                 }}
               ></div>
             </div>
@@ -354,7 +393,7 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
                 rotate: rotation,
                 scale: scale
               }}
-              className="w-[400px] h-[400px] rounded-full relative overflow-hidden shadow-2xl cursor-pointer select-none border-4 border-yellow-400"
+              className="w-[400px] h-[400px] rounded-full relative overflow-hidden shadow-2xl cursor-pointer select-none border-0 border-yellow-400"
               drag={!isSpinning}
               dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
               dragElastic={0}
@@ -411,16 +450,17 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
                       <div
                         className="absolute text-white font-bold text-xs flex items-center justify-center"
                         style={{
-                          left: '50%',
-                          top: '8px',
-                          transform: `translateX(-50%) rotate(${(360/actors.length)/2}deg)`,
-                          transformOrigin: '50% 180px',
-                          width: '140px',
-                          height: '30px',
+                          left: '0%',
+                          top: '0%',
+                          // transform: `translateX(-50%) rotate(${(360/actors.length)/2}deg)`,
+                          transform: `translateX(64%) rotate(-75deg)`,
+                          // transformOrigin: '50% 190px',
+                          width: '200px',
+                          height: '120px',
                           textAlign: 'center',
                           textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
                           lineHeight: '1.1',
-                          fontSize: '9px',
+                          fontSize: '15px',
                           fontWeight: '600',
                           padding: '2px 4px',
                           whiteSpace: 'nowrap',
@@ -449,7 +489,7 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
               {isSpinning ? 'Spinning...' : 'Drag the wheel or click spin!'}
             </p>
             <p className="text-purple-200">
-              {isSpinning ? 'Finding your lucky actor...' : 'Drag the wheel in any direction or use the button below'}
+              {isSpinning ? 'Finding your lucky actor...' : 'Drag the wheel in clock direction or use the button below'}
             </p>
           </div>
 
@@ -500,6 +540,7 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
         <CelebrationPopup
           quote={aiQuote}
           actorName={result || ''}
+          actorImage={result ? actorImages[result] : ''}
           staffName={staff.name}
           onClose={handleCelebrationClose}
         />

@@ -191,29 +191,20 @@ app.get('/api/staff/:id/spins', async (req, res) => {
 app.post('/api/generate-quote', async (req, res) => {
   try {
     const { staffName, department, favoriteThings, actorName } = req.body;
-    
-//     const prompt = `Generate a short, fun, celebratory thank-you quote for a professor. Use this format:
 
-// Staff Name: ${staffName}
-// Department: ${department}
-// Favorite Things: ${favoriteThings.join(', ')}
-// Actor: ${actorName}
+    // Pick only one random favorite thing
+    let favoriteThing = '';
+    if (Array.isArray(favoriteThings) && favoriteThings.length > 0) {
+      favoriteThing = favoriteThings[Math.floor(Math.random() * favoriteThings.length)];
+    } else if (typeof favoriteThings === 'string' && favoriteThings.trim() !== '') {
+      favoriteThing = favoriteThings;
+    }
 
-// Create a 2-3 line quote that:
-// - Starts with "Dear Professor ${staffName},"
-// - Mentions one of their favorite things
-// - Connects it to the actor name in a fun way
-// - Ends with appreciation for their department work
-// - Use appropriate emojis
-// - Keep it motivational and joyful
-
-// Example style: "Dear Professor Sarah, Since you love Coffee ☕, today Shah Rukh Khan is raising a toast to you! Thank you for energizing the Computer Science department! 🎉"`;
-
-const prompt = `Generate a heartfelt, blessing-style Teacher’s Day quote in one or two lines.
+    const prompt = `Generate a heartfelt, blessing-style Teacher’s Day quote in one or two lines.
 
 Format:
 - Start with "Dear, ${staffName}"
-- Mention one of their favorite things: ${favoriteThings.join(', ')}
+- Mention one of their favorite things: ${favoriteThing}
 - Connect it with ${actorName} in a joyful and inspiring way
 - Use blessing/aim/destination style: wish them joy, guidance, light, inspiration
 - Appreciate their contribution to the ${department} department
@@ -224,8 +215,6 @@ Example style:
 "Dear, Meena 🌸 Since you love Coffee ☕, Rajinikanth says your energy blesses every student’s journey towards success 🌟🙏 Thank you for guiding the Computer Science department. Happy Teacher’s Day 🎉"
 
 "Dear, Arjun ✨ Since you love Gardening 🌱, Sridevi says you nurture every student’s path with blessings and wisdom, helping them bloom towards their dreams 🌸🙏 Thank you for inspiring the Mathematics department. Happy Teacher’s Day 🎉"`;
-
-
 
     const apiKey = process.env.GEMINI_API_KEY;
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
@@ -247,8 +236,23 @@ Example style:
     });
 
     const data = await response.json();
-    const quote = data.candidates[0].content.parts[0].text.trim();
-    
+    let quote = '';
+    if (
+      data &&
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts &&
+      typeof data.candidates[0].content.parts[0].text === 'string'
+    ) {
+      quote = data.candidates[0].content.parts[0].text.trim();
+      // Prevent buggy output like '.01' or empty string
+      if (!quote || /^\.?\d+$/.test(quote)) {
+        quote = 'Sorry, could not generate a valid quote. Please try again.';
+      }
+    } else {
+      quote = 'Sorry, could not generate a valid quote. Please try again.';
+    }
     res.json({ quote });
   } catch (error) {
     console.error('AI quote generation error:', error);

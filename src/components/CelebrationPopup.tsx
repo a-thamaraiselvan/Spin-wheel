@@ -6,6 +6,7 @@ import { MdRotateRight } from "react-icons/md"; // Example for Material Design i
 interface CelebrationPopupProps {
   quote: string;
   actorName: string;
+  actorImage: string;
   staffName: string;
   onClose: () => void;
 }
@@ -13,6 +14,7 @@ interface CelebrationPopupProps {
 const CelebrationPopup: React.FC<CelebrationPopupProps> = ({
   quote,
   actorName,
+  actorImage,
   staffName,
   onClose,
 }) => {
@@ -80,9 +82,19 @@ const CelebrationPopup: React.FC<CelebrationPopupProps> = ({
             transition={{ delay: 0.2, type: "spring", damping: 15 }}
             className="text-center mb-6"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MdRotateRight className="w-10 h-10 text-white" />
-            </div>
+            {/* Show actor image if available, else dummy icon */}
+            {actorImage ? (
+              <img
+                src={actorImage}
+                alt={actorName}
+                className="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-1 border-yellow-600"
+                style={{ background: '#FFD600' }}
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-yellow-400 flex items-center justify-center mx-auto mb-4 border-4 border-yellow-600">
+                <span className="text-4xl font-bold text-white">🎭</span>
+              </div>
+            )}
             <h2 className="text-2xl font-bold text-gray-800 mb-2">🎉 Celebration Time! 🎉</h2>
             <p className="text-lg font-semibold text-purple-600">
               {actorName} was selected!
@@ -97,17 +109,21 @@ const CelebrationPopup: React.FC<CelebrationPopupProps> = ({
           >
             <div className="text-center">
               <div className="text-gray-800 leading-relaxed">
-                {quote.split('\n').map((line, index) => (
-                  <p key={index} className="mb-2 last:mb-0">
-                    {line.includes(staffName) ? (
-                      <span className="font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded">
-                        {line}
-                      </span>
-                    ) : (
-                      line
+                {typeof quote === 'string' && quote.trim() !== ''
+                  ? quote.split('\n').map((line, index) => (
+                      <p key={index} className="mb-2 last:mb-0">
+                        {line.includes(staffName) ? (
+                          <span className="font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded">
+                            {line}
+                          </span>
+                        ) : (
+                          line
+                        )}
+                      </p>
+                    ))
+                  : (
+                      <p className="mb-2 last:mb-0 text-red-500">No quote available.</p>
                     )}
-                  </p>
-                ))}
               </div>
             </div>
           </motion.div>
