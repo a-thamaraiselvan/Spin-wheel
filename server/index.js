@@ -7,7 +7,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.VITE_FRONTEND_URL || 'http://localhost:5173';
 
 app.use(cors({
   origin: FRONTEND_URL,
@@ -15,7 +15,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use(express.json());
 
 // MySQL connection
 const dbConfig = {
