@@ -4,66 +4,78 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import CelebrationPopup from './CelebrationPopup';
-import MGR from '../assets/M G R.jpg';
-import GeminiGanesan from '../assets/Gemini Ganesan.png';
-import jaishankar from '../assets/jaishankar.png';
-import sivajiganesan from '../assets/sivaji ganesan.jpg';
-import Jayalalithaa from '../assets/J. Jayalalithaa.jpg';
-import Lalitha from '../assets/Lalitha-c.jpg';
-import SarojaDevi from '../assets/B. Saroja Devi.jpg';
-import Vijaya from '../assets/KR_Vijaya.jpg';
-import Nambiar from '../assets/M. N. Nambiar.jpeg';
-import MahanatiSavitri from '../assets/mahanati-savitri.jpg';
-import SA from '../assets/S. A..jpeg';
-import SSR from '../assets/SSR.png';
-import Sivakumar from '../assets/Sivakumar.png';
-import RSManohar from '../assets/R. S. Manohar.jpeg';
-import PadminiRamachandran from '../assets/Padmini_Ramachandran.jpg';
-import Ragini from '../assets/Ragini-closeup-2.jpg';
-import TRMahali from '../assets/T. R. Mahali..jpeg';
-import muthuraman from '../assets/muthuraman.jpg'
+import Thiruvalluvar from '../assets/Thiruvalluvar.jpg';
+import Avvaiyar from '../assets/Avvaiyar.jpeg';
+import Kambar from '../assets/Kambar.jpeg';
+import IlangoAdigal from '../assets/IlangoAdigal.jpeg';
+import Kapilar from '../assets/Kapilar.png';
+import SubramaniaBharathi from '../assets/SubramaniaBharathi.jpeg';
+import Bharathidasan from '../assets/Bharathidasan.jpeg';
+import Kannadasan from '../assets/Kannadasan.jpeg';
+import MahatmaGandhi from '../assets/MahatmaGandhi.jpeg';
+import SubhasChandraBose from '../assets/SubhasChandraBose.jpeg';
+import BhagatSingh from '../assets/BhagatSingh.jpeg';
+import JawaharlalNehru from '../assets/JawaharlalNehru.jpeg';
+import SardarVallabhbhaiPatel from '../assets/Sardarpatel.jpg';
+import RaniLakshmibai from '../assets/RaniLakshmibai.jpg';
+import SachinTendulkar from '../assets/SachinTendulkar.jpg';
+import ViratKohli from '../assets/ViratKohli.jpg';
+import MSDhoni from '../assets/ViratKohli.jpg';
+import PVSindhu from '../assets/PVSindhu.jpg';
+import SainaNehwal from '../assets/SainaNehwal.jpeg';
+import MaryKom from '../assets/MaryKom.jpg';
+import NeerajChopra from '../assets/NeerajChopra.jpg';
+import KapilDev from '../assets/KapilDev.jpg';
 
 const actors = [
-  "J.Jayalalithaa",
-  "Lalitha C",
-  "B. Saroja Devi",
-  "Gemini Ganesan",
-  "Jaishankar",
-  "KR.Vijaya",
-  "M G R",
-  "M.N.Nambiar",
-  "Mahanati Savitri",
-  "muthuraman",
-  "Padmini Ramachandran",
-  "R.S.Manohar",
-  "Ragini",
-  "S.A",
-  "Sivaji ganesan",
-  "Sivakumar",
-  "SSR",
-  "T.R.Mahali"
+  "Thiruvalluvar",
+	"Avvaiyar",
+	"Kambar",
+	"Ilango Adigal",
+	"Kapilar",
+	"Subramania Bharathi",
+	"Bharathidasan",
+	"Kannadasan",
+  "Mahatma Gandhi",
+	"Subhas Chandra Bose",
+	"Bhagat Singh",
+	"Jawaharlal Nehru",
+	"Sardar Vallabhbhai Patel",
+	"Rani Lakshmibai",
+  "Sachin Tendulkar",
+	"Virat Kohli",
+	"M.S. Dhoni",
+	"P.V. Sindhu",
+	"Saina Nehwal",
+	"Mary Kom",
+	"Neeraj Chopra",
+	"Kapil Dev"
 ];
 
 // Actor image mapping (put images in public/actors/ with these filenames)
 const actorImages: Record<string, string> = {
-  'M G R': MGR,
-  'B. Saroja Devi' : SarojaDevi,
-  'Gemini Ganesan': GeminiGanesan,
-  'Jaishankar': jaishankar,
-  'Sivaji Ganesan': sivajiganesan,
-  'J.Jayalalithaa': Jayalalithaa,
-  'Lalitha C': Lalitha,
-  'KR.Vijaya': Vijaya,
-  'M.N.Nambiar': Nambiar,
-  'Mahanati Savitri': MahanatiSavitri,
-  'S.A': SA,
-  'T.R.Mahali': TRMahali,
-  'SSR': SSR,
-  'Sivakumar': Sivakumar,
-  'R.S.Manohar': RSManohar,
-  'Padmini Ramachandran' : PadminiRamachandran,
-  'Ragini':Ragini,
-  'muthuraman' : muthuraman
+  'Thiruvalluvar': Thiruvalluvar,
+  'Avvaiyar' : Avvaiyar,
+  'Kambar' : Kambar,
+  'Ilango Adigal' : IlangoAdigal,
+  'Kapilar' : Kapilar,
+  'Subramania Bharathi' : SubramaniaBharathi,
+  'Bharathidasan' : Bharathidasan,
+  'Kannadasan' : Kannadasan,
+  'Mahatma Gandhi' : MahatmaGandhi,
+  'Subhas Chandra Bose' : SubhasChandraBose,
+  'Bhagat Singh' : BhagatSingh,
+  'Jawaharlal Nehru' : JawaharlalNehru,
+  'Sardar Vallabhbhai Patel' : SardarVallabhbhaiPatel,
+  'Rani Lakshmibai' : RaniLakshmibai,
+  'Sachin Tendulkar' : SachinTendulkar,
+  'Virat Kohli' : ViratKohli,
+  'M.S. Dhoni' : MSDhoni,
+  'P.V. Sindhu' : PVSindhu,
+  'Saina Nehwal' : SainaNehwal,
+  'Mary Kom' : MaryKom,
+  'Neeraj Chopra' : NeerajChopra,
+  'Kapil Dev' : KapilDev,
 };
 
 interface SpinWheelProps {
@@ -94,82 +106,10 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
   }, [staffId]);
 
 const playSpinSound = () => {
-  try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    // Wind-like spinning sound
-    const oscillator1 = audioContext.createOscillator();
-    const oscillator2 = audioContext.createOscillator();
-    const gainNode1 = audioContext.createGain();
-    const gainNode2 = audioContext.createGain();
-    const filter = audioContext.createBiquadFilter();
-    
-    oscillator1.connect(gainNode1);
-    oscillator2.connect(gainNode2);
-    gainNode1.connect(filter);
-    gainNode2.connect(filter);
-    filter.connect(audioContext.destination);
-    
-    // Two oscillators for richer sound
-    oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
-    oscillator1.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 3.0);
-    oscillator1.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 8.0);
-    oscillator1.type = 'sawtooth';
-    
-    oscillator2.frequency.setValueAtTime(300, audioContext.currentTime);
-    oscillator2.frequency.exponentialRampToValueAtTime(900, audioContext.currentTime + 3.0);
-    oscillator2.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 8.0);
-    oscillator2.type = 'triangle';
-    
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1200, audioContext.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 8.0);
-    
-    gainNode1.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode1.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.1);
-    gainNode1.gain.exponentialRampToValueAtTime(0.02, audioContext.currentTime + 8.0);
-    
-    gainNode2.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode2.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.2);
-    gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 8.0);
-    
-    oscillator1.start(audioContext.currentTime);
-    oscillator2.start(audioContext.currentTime);
-    oscillator1.stop(audioContext.currentTime + 8.0);
-    oscillator2.stop(audioContext.currentTime + 8.0);
-  } catch (error) {
-    console.log('Audio context not available');
-  }
 };
 
   const playSuccessSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Victory fanfare
-      const frequencies = [523.25, 659.25, 783.99]; // C, E, G major chord
-      frequencies.forEach((freq, i) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 1.0);
-      });
-    } catch (error) {
-      console.log('Audio context not available');
-    }
   };
-
   const fetchStaffDetails = async () => {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';

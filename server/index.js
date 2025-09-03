@@ -199,22 +199,21 @@ app.post('/api/generate-quote', async (req, res) => {
     } else if (typeof favoriteThings === 'string' && favoriteThings.trim() !== '') {
       favoriteThing = favoriteThings;
     }
-
-    const prompt = `Generate a heartfelt, blessing-style Teacher’s Day quote in one or two lines.
+const prompt = `Generate a heartfelt, blessing-style Teacher’s Day quote in one or two lines.
 
 Format:
 - Start with "Dear, ${staffName}"
 - Mention one of their favorite things: ${favoriteThing}
-- Connect it with ${actorName} in a joyful and inspiring way
-- Use blessing/aim/destination style: wish them joy, guidance, light, inspiration
+- Use ${actorName} in an inspiring or motivational way (not "says...", but like "inspired by...", "with the courage of...", "guided by the wisdom of...")
+- Make the message sound like blessings, guidance, or inspiration
 - Appreciate their contribution to the ${department} department
 - End with "Happy Teacher’s Day 🎉"
 - Add positive emojis like 🌟🙏✨🌸🎉
 
 Example style:
-"Dear, Meena 🌸 Since you love Coffee ☕, Rajinikanth says your energy blesses every student’s journey towards success 🌟🙏 Thank you for guiding the Computer Science department. Happy Teacher’s Day 🎉"
+"Dear, Meena 🌸 Since you love Coffee ☕, inspired by Thiruvalluvar’s wisdom, your guidance helps every student walk the righteous path 🌟🙏 Thank you for leading the Computer Science department. Happy Teacher’s Day 🎉"
 
-"Dear, Arjun ✨ Since you love Gardening 🌱, Sridevi says you nurture every student’s path with blessings and wisdom, helping them bloom towards their dreams 🌸🙏 Thank you for inspiring the Mathematics department. Happy Teacher’s Day 🎉"`;
+"Dear, Arjun ✨ Since you love Gardening 🌱, with the courage of Bhagat Singh, you nurture every student’s dream to bloom with strength and hope 🌸🙏 Thank you for inspiring the Mathematics department. Happy Teacher’s Day 🎉"`;
 
     const apiKey = process.env.GEMINI_API_KEY;
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {

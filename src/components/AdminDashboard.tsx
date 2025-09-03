@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -15,7 +15,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Wifi,
+  WifiOff,
+  RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -48,12 +51,210 @@ const AdminDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(15);
+  const [refreshInterval] = useState(10000); // 2 seconds in milliseconds
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const navigate = useNavigate();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    fetchAnalytics();
-    fetchStaff();
+  // Calculate analytics from staff data directly
+  const calculateAnalytics = useCallback((staffData: Staff[]) => {
+    const totalStaff = staffData.length;
+    const pendingStaff = staffData.filter(member => member.status === 'pending').length;
+    const completedStaff = staffData.filter(member => member.status === 'completed').length;
+    const totalSpins = staffData.reduce((sum, member) => sum + (member.spin_count || 0), 0);
+    
+    return {
+      totalStaff,
+      pendingStaff,
+      completedStaff,
+      totalSpins
+    };
   }, []);
+
+  // Memoized fetch functions to prevent unnecessary re-renders
+  const fetchAnalytics = useCallback(async (showLoading = false) => {
+    try {
+      if (showLoading) setIsRefreshing(true);
+      
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      
+      // Try to fetch from analytics endpoint first
+      try {
+        const response = await fetch(`${backendUrl}/api/analytics`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Analytics data from API:', data);
+          setAnalytics(data);
+          setIsOnline(true);
+          setLastUpdated(new Date());
+          return;
+        }
+      } catch (analyticsError) {
+        console.warn('Analytics endpoint failed, will calculate from staff data:', analyticsError);
+      }
+      
+      // If analytics endpoint fails, calculate from current staff data
+      if (staff.length > 0) {
+        const calculatedAnalytics = calculateAnalytics(staff);
+        console.log('Calculated analytics from staff data:', calculatedAnalytics);
+        setAnalytics(calculatedAnalytics);
+      }
+      
+      setIsOnline(true);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      setIsOnline(false);
+      
+      // Fallback: calculate from current staff data
+      if (staff.length > 0) {
+        const calculatedAnalytics = calculateAnalytics(staff);
+        setAnalytics(calculatedAnalytics);
+      }
+    } finally {
+      if (showLoading) setIsRefreshing(false);
+    }
+  }, [staff, calculateAnalytics]);
+
+  const fetchStaff = useCallback(async (showLoading = false) => {
+    try {
+      if (showLoading) setIsRefreshing(true);
+      
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      console.log('Fetching staff from:', `${backendUrl}/api/staff`);
+      
+      const response = await fetch(`${backendUrl}/api/staff`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Staff data received:', data);
+      setStaff(Array.isArray(data) ? data : []);
+      
+      // Update analytics based on staff data
+      const calculatedAnalytics = calculateAnalytics(Array.isArray(data) ? data : []);
+      setAnalytics(calculatedAnalytics);
+      
+      setIsOnline(true);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      setIsOnline(false);
+      
+      // Set empty data on error
+      setStaff([]);
+      setAnalytics({
+        totalStaff: 0,
+        pendingStaff: 0,
+        completedStaff: 0,
+        totalSpins: 0
+      });
+    } finally {
+      if (showLoading) setIsRefreshing(false);
+    }
+  }, [calculateAnalytics]);
+
+  // Combined fetch function for efficiency
+  const fetchAllData = useCallback(async (showLoading = false) => {
+    try {
+      if (showLoading) setIsRefreshing(true);
+      
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      console.log('Fetching all data from:', backendUrl);
+      
+      // Fetch staff data first (it's the primary data source)
+      const staffResponse = await fetch(`${backendUrl}/api/staff`);
+      
+      if (!staffResponse.ok) {
+        throw new Error(`Staff API error! status: ${staffResponse.status}`);
+      }
+      
+      const staffData = await staffResponse.json();
+      console.log('Staff data fetched:', staffData);
+      
+      // Ensure staffData is an array
+      const safeStaffData = Array.isArray(staffData) ? staffData : [];
+      setStaff(safeStaffData);
+      
+      // Calculate analytics from staff data
+      const calculatedAnalytics = calculateAnalytics(safeStaffData);
+      console.log('Calculated analytics:', calculatedAnalytics);
+      setAnalytics(calculatedAnalytics);
+      
+      setIsOnline(true);
+      setLastUpdated(new Date());
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setIsOnline(false);
+      
+      // Set safe defaults on error
+      setStaff([]);
+      setAnalytics({
+        totalStaff: 0,
+        pendingStaff: 0,
+        completedStaff: 0,
+        totalSpins: 0
+      });
+    } finally {
+      if (showLoading) setIsRefreshing(false);
+    }
+  }, [calculateAnalytics]);
+
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    fetchAllData(true);
+  };
+
+  // Setup auto-refresh interval
+  useEffect(() => {
+    // Initial fetch
+    fetchAllData(true);
+
+    // Setup interval for auto-refresh every 2 seconds
+    intervalRef.current = setInterval(() => {
+      fetchAllData(false); // Don't show loading for auto-refresh
+    }, refreshInterval);
+
+    // Cleanup interval on component unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchAllData]);
+
+  // Handle browser visibility change to pause/resume updates
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Pause updates when tab is not visible
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      } else {
+        // Resume updates when tab becomes visible
+        fetchAllData(false);
+        intervalRef.current = setInterval(() => {
+          fetchAllData(false);
+        }, refreshInterval);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchAllData]);
 
   useEffect(() => {
     filterStaff();
@@ -66,28 +267,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
   }, [searchTerm, departmentFilter, statusFilter]);
-
-  const fetchAnalytics = async () => {
-    try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${backendUrl}/api/analytics`);
-      const data = await response.json();
-      setAnalytics(data);
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-    }
-  };
-
-  const fetchStaff = async () => {
-    try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${backendUrl}/api/staff`);
-      const data = await response.json();
-      setStaff(data);
-    } catch (error) {
-      console.error('Error fetching staff:', error);
-    }
-  };
 
   const filterStaff = () => {
     let filtered = staff;
@@ -134,6 +313,10 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
+    // Clear interval before logout
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
     localStorage.removeItem('adminToken');
     window.location.href = '/admin';
   };
@@ -142,6 +325,17 @@ const AdminDashboard = () => {
     setSearchTerm('');
     setDepartmentFilter('');
     setStatusFilter('');
+  };
+
+  // Format last updated time
+  const formatLastUpdated = (date: Date | null) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return date.toLocaleTimeString();
   };
 
   // Get unique departments for filter dropdown
@@ -153,6 +347,37 @@ const AdminDashboard = () => {
     { id: 'hall-mode', label: 'Hall Mode', icon: Gamepad2 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  // Connection Status Indicator
+  const ConnectionStatus = () => (
+    <div className="flex items-center space-x-2">
+      {isOnline ? (
+        <div className="flex items-center space-x-2 text-green-600">
+          <Wifi className="w-4 h-4" />
+          <span className="text-xs font-medium">Live</span>
+        </div>
+      ) : (
+        <div className="flex items-center space-x-2 text-red-600">
+          <WifiOff className="w-4 h-4" />
+          <span className="text-xs font-medium">Offline</span>
+        </div>
+      )}
+      
+      <div className="text-xs text-gray-500">
+        Updated: {formatLastUpdated(lastUpdated)}
+      </div>
+      
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleManualRefresh}
+        disabled={isRefreshing}
+        className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+      >
+        <RefreshCw className={`w-4 h-4 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+      </motion.button>
+    </div>
+  );
 
   // Pagination component
   const Pagination = () => {
@@ -272,6 +497,11 @@ const AdminDashboard = () => {
             <RotateCw className="w-6 h-6 mr-2 text-purple-600" />
             Professor Spin
           </h1>
+          
+          {/* Connection Status */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <ConnectionStatus />
+          </div>
         </div>
         
         <nav className="mt-6">
@@ -306,20 +536,50 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              {activeTab === 'dashboard' && 'Dashboard Overview'}
-              {activeTab === 'staff' && 'Staff Management'}
-              {activeTab === 'hall-mode' && 'Hall Mode'}
-              {activeTab === 'settings' && 'Settings'}
-            </h2>
-            <p className="text-gray-600">
-              {activeTab === 'dashboard' && 'Monitor your spin wheel activities and statistics'}
-              {activeTab === 'staff' && 'Manage registered staff and spin activities'}
-              {activeTab === 'hall-mode' && 'Live event mode for group activities'}
-              {activeTab === 'settings' && 'Configure your application settings'}
-            </p>
+          {/* Header with Live Update Indicator */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                {activeTab === 'dashboard' && 'Dashboard Overview'}
+                {activeTab === 'staff' && 'Staff Management'}
+                {activeTab === 'hall-mode' && 'Hall Mode'}
+                {activeTab === 'settings' && 'Settings'}
+              </h2>
+              <p className="text-gray-600">
+                {activeTab === 'dashboard' && 'Monitor your spin wheel activities and statistics'}
+                {activeTab === 'staff' && 'Manage registered staff and spin activities'}
+                {activeTab === 'hall-mode' && 'Live event mode for group activities'}
+                {activeTab === 'settings' && 'Configure your application settings'}
+              </p>
+            </div>
+            
+            {/* Live Update Status */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg shadow-sm border">
+                {isOnline ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-green-700">Live Updates</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-red-700">Connection Lost</span>
+                  </div>
+                )}
+              </div>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="bg-white px-4 py-2 rounded-lg shadow-sm border hover:bg-gray-50 transition-colors flex items-center space-x-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="text-sm font-medium">Refresh</span>
+              </motion.button>
+            </div>
           </div>
 
           {/* Dashboard Tab */}
@@ -329,58 +589,118 @@ const AdminDashboard = () => {
               animate={{ opacity: 1 }}
               className="space-y-8"
             >
-              {/* Analytics Cards */}
+              {/* Analytics Cards with smooth updates */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <motion.div
+                  key={`total-${analytics?.totalStaff}`}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white"
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative z-10">
                     <div>
                       <p className="text-blue-100 text-sm">Total Staff</p>
-                      <p className="text-3xl font-bold">{analytics?.totalStaff || 0}</p>
+                      <motion.p 
+                        key={analytics?.totalStaff}
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="text-3xl font-bold"
+                      >
+                        {analytics?.totalStaff || 0}
+                      </motion.p>
                     </div>
                     <Users className="w-8 h-8 text-blue-200" />
                   </div>
+                  {isRefreshing && (
+                    <div className="absolute inset-0 bg-white bg-opacity-10 flex items-center justify-center">
+                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
                 </motion.div>
 
                 <motion.div
+                  key={`pending-${analytics?.pendingStaff}`}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white"
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative z-10">
                     <div>
                       <p className="text-orange-100 text-sm">Pending</p>
-                      <p className="text-3xl font-bold">{analytics?.pendingStaff || 0}</p>
+                      <motion.p 
+                        key={analytics?.pendingStaff}
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="text-3xl font-bold"
+                      >
+                        {analytics?.pendingStaff || 0}
+                      </motion.p>
                     </div>
                     <Clock className="w-8 h-8 text-orange-200" />
                   </div>
+                  {isRefreshing && (
+                    <div className="absolute inset-0 bg-white bg-opacity-10 flex items-center justify-center">
+                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
                 </motion.div>
 
                 <motion.div
+                  key={`completed-${analytics?.completedStaff}`}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white"
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative z-10">
                     <div>
                       <p className="text-green-100 text-sm">Completed</p>
-                      <p className="text-3xl font-bold">{analytics?.completedStaff || 0}</p>
+                      <motion.p 
+                        key={analytics?.completedStaff}
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="text-3xl font-bold"
+                      >
+                        {analytics?.completedStaff || 0}
+                      </motion.p>
                     </div>
                     <CheckCircle className="w-8 h-8 text-green-200" />
                   </div>
+                  {isRefreshing && (
+                    <div className="absolute inset-0 bg-white bg-opacity-10 flex items-center justify-center">
+                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
                 </motion.div>
 
                 <motion.div
+                  key={`spins-${analytics?.totalSpins}`}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white"
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative z-10">
                     <div>
                       <p className="text-purple-100 text-sm">Total Spins</p>
-                      <p className="text-3xl font-bold">{analytics?.totalSpins || 0}</p>
+                      <motion.p 
+                        key={analytics?.totalSpins}
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="text-3xl font-bold"
+                      >
+                        {analytics?.totalSpins || 0}
+                      </motion.p>
                     </div>
                     <RotateCw className="w-8 h-8 text-purple-200" />
                   </div>
+                  {isRefreshing && (
+                    <div className="absolute inset-0 bg-white bg-opacity-10 flex items-center justify-center">
+                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
                 </motion.div>
               </div>
 
@@ -409,6 +729,39 @@ const AdminDashboard = () => {
                       <p className="text-sm text-gray-600">Full-screen event mode</p>
                     </div>
                   </button>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-white p-6 rounded-xl shadow-sm">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h3>
+                <div className="space-y-3">
+                  {staff.slice(0, 5).map((member) => (
+                    <motion.div
+                      key={`activity-${member.id}-${member.spin_count}`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">{member.name}</p>
+                          <p className="text-xs text-gray-500">{member.department}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-700">
+                          {member.spin_count} spin{member.spin_count !== 1 ? 's' : ''}
+                        </p>
+                        <p className={`text-xs ${member.status === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>
+                          {member.status}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             </motion.div>
@@ -506,13 +859,26 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Enhanced Staff Table */}
+              {/* Enhanced Staff Table with Live Updates */}
               <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50 flex items-center justify-between">
                   <h3 className="text-xl font-semibold text-gray-800 flex items-center">
                     <Users className="w-6 h-6 mr-2 text-purple-600" />
                     Registered Staff
                   </h3>
+                  
+                  {/* Live indicator for table */}
+                  <div className="flex items-center space-x-2">
+                    {isOnline && (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-700 font-medium">Auto-updating</span>
+                      </div>
+                    )}
+                    <span className="text-xs text-gray-500">
+                      Last: {formatLastUpdated(lastUpdated)}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -536,7 +902,7 @@ const AdminDashboard = () => {
                     <tbody className="bg-white divide-y divide-gray-100">
                       {paginatedStaff.map((member, index) => (
                         <motion.tr 
-                          key={member.id} 
+                          key={`${member.id}-${member.spin_count}-${member.status}`}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
@@ -567,7 +933,10 @@ const AdminDashboard = () => {
                           </td>
                           <td className="px-6 py-5">
                             <div className="flex flex-col space-y-2">
-                              <span
+                              <motion.span
+                                key={`status-${member.id}-${member.status}`}
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
                                 className={`inline-flex w-fit px-3 py-1 text-xs font-semibold rounded-full ${
                                   member.status === 'completed'
                                     ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
@@ -575,12 +944,17 @@ const AdminDashboard = () => {
                                 }`}
                               >
                                 {member.status === 'completed' ? '✓ Completed' : '⏳ Pending'}
-                              </span>
+                              </motion.span>
                               {member.spin_count > 0 && (
-                                <div className="flex items-center text-xs text-gray-500">
+                                <motion.div 
+                                  key={`spins-${member.id}-${member.spin_count}`}
+                                  initial={{ scale: 0.8, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  className="flex items-center text-xs text-gray-500"
+                                >
                                   <RotateCw className="w-3 h-3 mr-1" />
                                   {member.spin_count} spin{member.spin_count > 1 ? 's' : ''}
-                                </div>
+                                </motion.div>
                               )}
                             </div>
                           </td>
@@ -691,8 +1065,22 @@ const AdminDashboard = () => {
                       <p className="font-medium text-gray-800">Database Connection</p>
                       <p className="text-sm text-gray-600">MySQL database status</p>
                     </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      isOnline 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {isOnline ? 'Connected' : 'Disconnected'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-800">Auto-Refresh</p>
+                      <p className="text-sm text-gray-600">Updates every 2 seconds</p>
+                    </div>
                     <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                      Connected
+                      Active
                     </span>
                   </div>
                   
@@ -704,6 +1092,39 @@ const AdminDashboard = () => {
                     <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                       Active
                     </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-800">Last Data Refresh</p>
+                      <p className="text-sm text-gray-600">Most recent update timestamp</p>
+                    </div>
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Never'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Settings */}
+              <div className="bg-white p-8 rounded-xl shadow-sm">
+                <h3 className="text-xl font-semibold text-gray-800 mb-6">Advanced Settings</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-800">Manual Refresh</p>
+                      <p className="text-sm text-gray-600">Force immediate data update</p>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleManualRefresh}
+                      disabled={isRefreshing}
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      <span>{isRefreshing ? 'Refreshing...' : 'Refresh Now'}</span>
+                    </motion.button>
                   </div>
                 </div>
               </div>
