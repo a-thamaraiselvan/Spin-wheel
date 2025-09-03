@@ -107,7 +107,7 @@ const RegistrationPage = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <Building className="w-4 h-4 inline mr-2" />
-              Department
+              Department(Full Name)
             </label>
             <input
               type="text"
@@ -115,7 +115,7 @@ const RegistrationPage = () => {
               value={formData.department}
               onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-              placeholder="e.g., Computer Science"
+              placeholder="e.g., Information Technology"
             />
           </div>
 

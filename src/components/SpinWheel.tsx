@@ -6,49 +6,39 @@ import confetti from 'canvas-confetti';
 import CelebrationPopup from './CelebrationPopup';
 import Thiruvalluvar from '../assets/Thiruvalluvar.jpg';
 import Avvaiyar from '../assets/Avvaiyar.jpeg';
-import Kambar from '../assets/Kambar.jpeg';
 import IlangoAdigal from '../assets/IlangoAdigal.jpeg';
-import Kapilar from '../assets/Kapilar.png';
 import SubramaniaBharathi from '../assets/SubramaniaBharathi.jpeg';
 import Bharathidasan from '../assets/Bharathidasan.jpeg';
 import Kannadasan from '../assets/Kannadasan.jpeg';
 import MahatmaGandhi from '../assets/MahatmaGandhi.jpeg';
 import SubhasChandraBose from '../assets/SubhasChandraBose.jpeg';
-import BhagatSingh from '../assets/BhagatSingh.jpeg';
 import JawaharlalNehru from '../assets/JawaharlalNehru.jpeg';
 import SardarVallabhbhaiPatel from '../assets/Sardarpatel.jpg';
 import RaniLakshmibai from '../assets/RaniLakshmibai.jpg';
 import SachinTendulkar from '../assets/SachinTendulkar.jpg';
 import ViratKohli from '../assets/ViratKohli.jpg';
 import MSDhoni from '../assets/ViratKohli.jpg';
-import PVSindhu from '../assets/PVSindhu.jpg';
 import SainaNehwal from '../assets/SainaNehwal.jpeg';
 import MaryKom from '../assets/MaryKom.jpg';
-import NeerajChopra from '../assets/NeerajChopra.jpg';
 import KapilDev from '../assets/KapilDev.jpg';
 
 const actors = [
   "Thiruvalluvar",
 	"Avvaiyar",
-	"Kambar",
 	"Ilango Adigal",
-	"Kapilar",
 	"Subramania Bharathi",
 	"Bharathidasan",
 	"Kannadasan",
   "Mahatma Gandhi",
 	"Subhas Chandra Bose",
-	"Bhagat Singh",
 	"Jawaharlal Nehru",
-	"Sardar Vallabhbhai Patel",
+	"Vallabhbhai Patel",
 	"Rani Lakshmibai",
   "Sachin Tendulkar",
 	"Virat Kohli",
 	"M.S. Dhoni",
-	"P.V. Sindhu",
 	"Saina Nehwal",
 	"Mary Kom",
-	"Neeraj Chopra",
 	"Kapil Dev"
 ];
 
@@ -56,25 +46,20 @@ const actors = [
 const actorImages: Record<string, string> = {
   'Thiruvalluvar': Thiruvalluvar,
   'Avvaiyar' : Avvaiyar,
-  'Kambar' : Kambar,
   'Ilango Adigal' : IlangoAdigal,
-  'Kapilar' : Kapilar,
   'Subramania Bharathi' : SubramaniaBharathi,
   'Bharathidasan' : Bharathidasan,
   'Kannadasan' : Kannadasan,
   'Mahatma Gandhi' : MahatmaGandhi,
   'Subhas Chandra Bose' : SubhasChandraBose,
-  'Bhagat Singh' : BhagatSingh,
   'Jawaharlal Nehru' : JawaharlalNehru,
-  'Sardar Vallabhbhai Patel' : SardarVallabhbhaiPatel,
+  'Vallabhbhai Patel' : SardarVallabhbhaiPatel,
   'Rani Lakshmibai' : RaniLakshmibai,
   'Sachin Tendulkar' : SachinTendulkar,
   'Virat Kohli' : ViratKohli,
   'M.S. Dhoni' : MSDhoni,
-  'P.V. Sindhu' : PVSindhu,
   'Saina Nehwal' : SainaNehwal,
   'Mary Kom' : MaryKom,
-  'Neeraj Chopra' : NeerajChopra,
   'Kapil Dev' : KapilDev,
 };
 
@@ -99,16 +84,97 @@ const SpinWheel: React.FC<SpinWheelProps> = ({ staffId: propStaffId, isHallMode 
   const dragHistory = useRef<{angle: number, time: number}[]>([]);
   const animationControls = useRef<any>(null);
   
-  const scale = useTransform(rotation, [0, 180, 360], [1, 1.05, 1]);
+  // const scale = useTransform(rotation, [0, 180, 360], [1, 1.05, 1]);
 
   useEffect(() => {
     fetchStaffDetails();
   }, [staffId]);
 
 const playSpinSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    let tickCount = 0;
+    const totalTicks = 40;
+    const animationDuration = 8000; // Exact same as your wheel: 8.0 seconds
+    
+    // Exact same easing as your wheel: [0.25, 0.1, 0.25, 1]
+    const cubicBezier = (t) => {
+      const p0 = 0, p1 = 0.25, p2 = 0.1, p3 = 0.25, p4 = 1;
+      const u = 1 - t;
+      return (u * u * u * p0) + (3 * u * u * t * p1) + (3 * u * t * t * p2) + (t * t * t * p4);
+    };
+    
+    const playClick = () => {
+      // Create tick sound
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(900, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.25, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.06);
+
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start();
+      osc.stop(audioContext.currentTime + 0.08);
+
+      tickCount++;
+      if (tickCount < totalTicks) {
+        const progress = tickCount / totalTicks;
+        const nextProgress = (tickCount + 1) / totalTicks;
+        
+        // Get the eased positions using your wheel's exact easing
+        const currentEased = cubicBezier(progress);
+        const nextEased = cubicBezier(nextProgress);
+        
+        // Calculate time difference based on easing curve
+        const currentTime = currentEased * animationDuration;
+        const nextTime = nextEased * animationDuration;
+        const nextDelay = nextTime - currentTime;
+        
+        setTimeout(playClick, nextDelay);
+      }
+    };
+
+    playClick();
+
+    setTimeout(() => {
+      if (audioContext.state !== "closed") audioContext.close();
+    }, animationDuration + 500);
+
+  } catch (error) {
+    console.log("Audio context not available");
+  }
 };
 
-  const playSuccessSound = () => {
+ const playSuccessSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      // Victory fanfare
+      const frequencies = [523.25, 659.25, 783.99]; // C, E, G major chord
+      frequencies.forEach((freq, i) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 1.0);
+      });
+    } catch (error) {
+      console.log('Audio context not available');
+    }
   };
   const fetchStaffDetails = async () => {
     try {
@@ -159,116 +225,229 @@ const playSpinSound = () => {
     return timeDiff > 0 ? angleDiff / timeDiff : 0;
   };
 
-  const handleSpin = async () => {
-    if (isSpinning || !staff) return;
+const handleSpin = async () => {
+  if (isSpinning || !staff) return;
 
-    // Stop any existing animation
-    if (animationControls.current) {
-      animationControls.current.stop();
-    }
+  // Stop any existing animation
+  if (animationControls.current) {
+    animationControls.current.stop();
+  }
 
-    setIsSpinning(true);
-    setResult(null);
-    setShowCelebration(false);
+  setIsSpinning(true);
+  setResult(null);
+  setShowCelebration(false);
 
-    // Play spinning sound
-    playSpinSound();
+  // RANDOM DURATION: 7.0 to 9.0 seconds (like 7.5, 8.6, 7.9, 8.9, etc.)
+  const randomDuration = 7.0 + (Math.random() * 2.0); // 7.0 to 9.0 seconds
+  
+  // Play spinning sound (keep your existing playSpinSound function)
+  playSpinSound();
 
-    // Generate random spin parameters
-    const baseSpins = Math.floor(Math.random() * 4) + 4; // 4-7 full rotations
-    const randomAngle = Math.random() * 360; // Random final position
-    
-    // Calculate total rotation
-    const currentRotation = rotation.get();
-    const totalRotation = baseSpins * 360 + randomAngle;
-    const finalRotation = currentRotation + totalRotation;
-    
-    // Pre-calculate the winning actor based on final position
-    const winningActor = getWinningActor(finalRotation);
-    
-    // Animate the wheel to the final position
-    animationControls.current = animate(rotation, finalRotation, {
-      type: "tween",
-      ease: [0.25, 0.1, 0.25, 1],
-      duration: 8.0, // Reduced from 5.0 for faster animation
-      onComplete: async () => {
-        setIsSpinning(false);
-        setResult(winningActor);
+  // Generate random spin parameters
+  const baseSpins = Math.floor(Math.random() * 4) + 4; // 4-7 full rotations
+  const randomAngle = Math.random() * 360; // Random final position
+  
+  // Calculate total rotation
+  const currentRotation = rotation.get();
+  const totalRotation = baseSpins * 360 + randomAngle;
+  const finalRotation = currentRotation + totalRotation;
+  
+  // Pre-calculate the winning actor based on final position
+  const winningActor = getWinningActor(finalRotation);
+  
+  // Animate the wheel with RANDOM DURATION (this is the key fix!)
+  animationControls.current = animate(rotation, finalRotation, {
+    type: "tween",
+    ease: [0.25, 0.1, 0.25, 1],
+    duration: randomDuration, // ← DYNAMIC! Not static 8.0 anymore
+    onComplete: async () => {
+      setIsSpinning(false);
+      setResult(winningActor);
 
-        // Play success sound immediately
-        playSuccessSound();
+      // Play success sound immediately
+      playSuccessSound();
 
-        // Trigger confetti immediately
-        triggerConfetti();
+      // Trigger confetti immediately
+      triggerConfetti();
 
-        // Show popup instantly with a default congratulatory message
-        setAiQuote(`🎉 Congratulations ${staff.name}! ${winningActor} is celebrating with you today! 🎉`);
-        setShowCelebration(true);
+      // Show popup instantly with a default congratulatory message
+      setAiQuote(`🎉 Congratulations ${staff.name}! ${winningActor} is celebrating with you today! 🎉`);
+      setShowCelebration(true);
 
-        // Generate AI quote in background
-        try {
-          const favoriteThings = [staff.favorite_thing_1, staff.favorite_thing_2, staff.favorite_thing_3];
-          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-          const response = await fetch(`${backendUrl}/api/generate-quote`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              staffName: staff.name,
-              department: staff.department,
-              favoriteThings,
-              actorName: winningActor,
-            }),
-          });
-          const data = await response.json();
-          setAiQuote(data.quote);
+      // Generate AI quote in background
+      try {
+        const favoriteThings = [staff.favorite_thing_1, staff.favorite_thing_2, staff.favorite_thing_3];
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/generate-quote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            staffName: staff.name,
+            department: staff.department,
+            favoriteThings,
+            actorName: winningActor,
+          }),
+        });
+        const data = await response.json();
+        setAiQuote(data.quote);
 
-          // Save result to database
-          await fetch(`${backendUrl}/api/spin/result`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              staffId: staff.id,
-              actorName: winningActor,
-              aiQuote: data.quote,
-            }),
-          });
-        } catch (error) {
-          console.error('Error generating quote:', error);
-          // Already showing default message, no need to update again
-        }
+        // Save result to database
+        await fetch(`${backendUrl}/api/spin/result`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            staffId: staff.id,
+            actorName: winningActor,
+            aiQuote: data.quote,
+          }),
+        });
+      } catch (error) {
+        console.error('Error generating quote:', error);
       }
-    });
-  };
+    }
+  });
+};
+// Enhanced fast-dropping celebration function
+const triggerConfetti = () => {
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
 
-  const triggerConfetti = () => {
+  // Initial center explosion with faster gravity
+  confetti({
+    particleCount: 120,
+    spread: 90,
+    origin: { y: 0.6 },
+    colors: colors,
+    gravity: 1.2, // Faster drop
+    drift: 0,
+    startVelocity: 35
+  });
+
+  // Side explosions with faster drop
+  setTimeout(() => {
+    // Left explosion
+    confetti({
+      particleCount: 70,
+      angle: 60,
+      spread: 70,
+      origin: { x: 0.15, y: 0.5 },
+      colors: colors.slice(0, 4),
+      gravity: 1.3,
+      startVelocity: 30
+    });
+    
+    // Right explosion
+    confetti({
+      particleCount: 70,
+      angle: 120,
+      spread: 70,
+      origin: { x: 0.85, y: 0.5 },
+      colors: colors.slice(4),
+      gravity: 1.3,
+      startVelocity: 30
+    });
+  }, 150);
+
+  // Quick paper shower from top
+  setTimeout(() => {
     confetti({
       particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
+      spread: 120,
+      origin: { y: -0.1 },
+      colors: colors,
+      gravity: 1.5, // Very fast drop
+      startVelocity: 25,
+      drift: 0.1
     });
-    
-    setTimeout(() => {
+  }, 300);
+
+  // Final burst with immediate fast drop
+  setTimeout(() => {
+    confetti({
+      particleCount: 80,
+      spread: 100,
+      origin: { x: 0.5, y: 0.3 },
+      colors: colors,
+      gravity: 1.8, // Fastest drop
+      startVelocity: 40,
+      drift: 0
+    });
+  }, 500);
+};
+
+// Super fast celebration (alternative option)
+const triggerFastCelebration = () => {
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+
+  // Immediate massive explosion with very fast gravity
+  confetti({
+    particleCount: 200,
+    spread: 140,
+    origin: { y: 0.5 },
+    colors: colors,
+    gravity: 2.0, // Super fast drop
+    drift: 0.05,
+    startVelocity: 45
+  });
+
+  // Quick side bursts
+  setTimeout(() => {
+    for (let i = 0; i < 3; i++) {
       confetti({
         particleCount: 50,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 }
+        angle: 60 + (i * 30),
+        spread: 60,
+        origin: { x: 0.2 + (i * 0.3), y: 0.4 },
+        colors: colors,
+        gravity: 1.8,
+        startVelocity: 35
       });
-    }, 150);
-    
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 }
-      });
-    }, 300);
-  };
+    }
+  }, 100);
+
+  // Top shower with instant drop
+  setTimeout(() => {
+    confetti({
+      particleCount: 150,
+      spread: 180,
+      origin: { y: -0.05 },
+      colors: colors,
+      gravity: 2.2, // Instant drop effect
+      startVelocity: 20
+    });
+  }, 250);
+};
+
+// Light and quick version (minimal but effective)
+const triggerLightConfetti = () => {
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FECA57'];
+
+  // Single burst with fast drop
+  confetti({
+    particleCount: 80,
+    spread: 80,
+    origin: { y: 0.6 },
+    colors: colors,
+    gravity: 1.5,
+    startVelocity: 30,
+    drift: 0
+  });
+
+  // Quick follow-up
+  setTimeout(() => {
+    confetti({
+      particleCount: 60,
+      spread: 100,
+      origin: { y: 0.1 },
+      colors: colors,
+      gravity: 1.8,
+      startVelocity: 25
+    });
+  }, 200);
+};
 
   const handleCelebrationClose = () => {
     setShowCelebration(false);
@@ -329,7 +508,7 @@ const playSpinSound = () => {
               ref={wheelRef}
               style={{ 
                 rotate: rotation,
-                scale: scale
+                // scale: scale
               }}
               className="w-[400px] h-[400px] rounded-full relative overflow-hidden shadow-2xl cursor-pointer select-none border-0 border-yellow-400"
               drag={!isSpinning}
@@ -408,7 +587,7 @@ const playSpinSound = () => {
                       >
                         <span style={{ 
                           display: 'block',
-                          transform: 'scale(0.9)',
+                      
                           maxWidth: '100%'
                         }}>
                           {actor}
@@ -433,8 +612,8 @@ const playSpinSound = () => {
 
           {/* Manual Spin Button */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            // whileHover={{ scale: 1.05 }}
+            // whileTap={{ scale: 0.95 }}
             onClick={handleSpin}
             disabled={isSpinning}
             className="bg-yellow-500 text-yellow-900 px-8 py-4 rounded-full font-bold text-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 flex items-center shadow-lg"

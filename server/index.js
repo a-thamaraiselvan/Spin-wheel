@@ -207,13 +207,12 @@ Format:
 - Use ${actorName} in an inspiring or motivational way (not "says...", but like "inspired by...", "with the courage of...", "guided by the wisdom of...")
 - Make the message sound like blessings, guidance, or inspiration
 - Appreciate their contribution to the ${department} department
-- End with "Happy Teacher’s Day 🎉"
 - Add positive emojis like 🌟🙏✨🌸🎉
 
 Example style:
-"Dear, Meena 🌸 Since you love Coffee ☕, inspired by Thiruvalluvar’s wisdom, your guidance helps every student walk the righteous path 🌟🙏 Thank you for leading the Computer Science department. Happy Teacher’s Day 🎉"
+"Dear, Meena 🌸 Since you love Coffee ☕, inspired by Thiruvalluvar’s wisdom, your guidance helps every student walk the righteous path 🌟🙏 Thank you for leading the Computer Science department."
 
-"Dear, Arjun ✨ Since you love Gardening 🌱, with the courage of Bhagat Singh, you nurture every student’s dream to bloom with strength and hope 🌸🙏 Thank you for inspiring the Mathematics department. Happy Teacher’s Day 🎉"`;
+"Dear, Arjun ✨ Since you love Gardening 🌱, with the courage of Bhagat Singh, you nurture every student’s dream to bloom with strength and hope 🌸🙏 Thank you for inspiring the Mathematics department."`;
 
     const apiKey = process.env.GEMINI_API_KEY;
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
